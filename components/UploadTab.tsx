@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useAppStore } from '../store';
 import { Upload, CheckCircle2, Loader2, XCircle, ShieldAlert, Square, CloudUpload, RefreshCw, Hash, User, Building2, Briefcase, Mail, ShieldCheck, ChevronDown, FileDown, AlertTriangle, Check, Fingerprint, Download, Sparkles, Bot } from 'lucide-react';
@@ -315,7 +314,7 @@ const UploadTab: React.FC = () => {
                 <div className="space-y-1 max-h-[300px] overflow-auto pr-2 custom-scrollbar border border-slate-100 rounded-xl bg-slate-50/30">
                    {cargoGroups.map(([key, displayName]) => (
                      <button key={key} onClick={() => { const s = new Set(restrictedNormalizedKeys); if (s.has(key)) s.delete(key); else s.add(key); setRestrictedNormalizedKeys(s); }} className={`w-full flex items-center justify-between p-4 border-b ${restrictedNormalizedKeys.has(key) ? 'bg-red-50 text-red-700' : 'bg-white'}`}>
-                        <span className="text-[10px] font-black uppercase">{displayName}</span>
+                        <span className="text-[10px] font-black uppercase text-left flex-1 mr-4">{displayName}</span>
                         {restrictedNormalizedKeys.has(key) ? <ShieldCheck className="w-4 h-4" /> : <Square className="w-4 h-4 opacity-0" />}
                      </button>
                    ))}

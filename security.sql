@@ -18,42 +18,35 @@ CREATE TABLE IF NOT EXISTS app_admins (
 
 -- Tabela de Colaboradores (Dados de Negócio / Perfis)
 CREATE TABLE IF NOT EXISTS employees (
-  id TEXT DEFAULT gen_random_uuid()::text PRIMARY KEY,
-  matricula TEXT NOT NULL,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  matricula TEXT NOT NULL UNIQUE,
   nome TEXT NOT NULL,
   setor TEXT,
   cargo TEXT,
-  email TEXT,
-  status TEXT DEFAULT 'active', -- Valores: 'active', 'inactive', 'pending'
+  email TEXT UNIQUE,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending')),
   is_restricted BOOLEAN DEFAULT false, -- True para cargos de confiança (NR-5)
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Garantir unicidade (Restrições de Integridade)
-  CONSTRAINT employees_email_key UNIQUE (email)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
--- Adiciona constraint de unicidade para matricula separadamente para ser robusto
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'employees_matricula_key') THEN
-        ALTER TABLE employees ADD CONSTRAINT employees_matricula_key UNIQUE (matricula);
-    END IF;
-END $$;
 
+-- Índices para performance de busca (Otimização para Dashboard e Filtros)
 CREATE INDEX IF NOT EXISTS idx_employees_matricula ON employees (matricula);
+CREATE INDEX IF NOT EXISTS idx_employees_email ON employees (email);
+CREATE INDEX IF NOT EXISTS idx_employees_setor ON employees (setor);
 
 -- Tabela de Inscrições (Candidaturas)
 CREATE TABLE IF NOT EXISTS registrations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'pending',
-  membership_type TEXT DEFAULT 'primary',
+  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('approved', 'rejected', 'pending')),
+  membership_type TEXT DEFAULT 'primary' CHECK (membership_type IN ('primary', 'alternate')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Tabela de Votos
 CREATE TABLE IF NOT EXISTS votes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  candidate_id TEXT,
+  candidate_id UUID REFERENCES employees(id) ON DELETE CASCADE,
   voter_matricula TEXT NOT NULL,
   timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -84,65 +77,39 @@ ALTER TABLE registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 
--- 5. POLÍTICAS DE SEGURANÇA (DROP AND RECREATE para garantir atualização)
+-- 5. POLÍTICAS DE SEGURANÇA (Controle de Acesso Baseado em Roles)
 
--- ===========================
 -- POLÍTICAS: APP_ADMINS
--- ===========================
-DROP POLICY IF EXISTS "Leitura Pública Admins" ON app_admins;
-DROP POLICY IF EXISTS "Gestão de Admins" ON app_admins;
 DROP POLICY IF EXISTS "Admins Read Admins" ON app_admins;
 DROP POLICY IF EXISTS "Admins Manage Admins" ON app_admins;
-
 CREATE POLICY "Admins Read Admins" ON app_admins FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admins Manage Admins" ON app_admins FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
--- ===========================
 -- POLÍTICAS: EMPLOYEES
--- ===========================
-DROP POLICY IF EXISTS "Leitura Geral Employees" ON employees;
-DROP POLICY IF EXISTS "Admin Modifica Employees" ON employees;
 DROP POLICY IF EXISTS "Users Read Employees" ON employees;
 DROP POLICY IF EXISTS "Admins Manage Employees" ON employees;
-
 CREATE POLICY "Users Read Employees" ON employees FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admins Manage Employees" ON employees FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
--- ===========================
 -- POLÍTICAS: REGISTRATIONS
--- ===========================
-DROP POLICY IF EXISTS "Leitura Geral Registrations" ON registrations;
-DROP POLICY IF EXISTS "Admin Modifica Registrations" ON registrations;
 DROP POLICY IF EXISTS "Users Read Registrations" ON registrations;
 DROP POLICY IF EXISTS "Admins Manage Registrations" ON registrations;
-
 CREATE POLICY "Users Read Registrations" ON registrations FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admins Manage Registrations" ON registrations FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
--- ===========================
--- POLÍTICAS: VOTES (CRÍTICO)
--- ===========================
-DROP POLICY IF EXISTS "Leitura Geral Votes" ON votes;
-DROP POLICY IF EXISTS "Inserir Voto" ON votes;
-DROP POLICY IF EXISTS "Admin Gerencia Votos" ON votes;
+-- POLÍTICAS: VOTES
 DROP POLICY IF EXISTS "Users Read Votes" ON votes;
 DROP POLICY IF EXISTS "Users Cast Votes" ON votes;
 DROP POLICY IF EXISTS "Admins Reset Votes" ON votes;
-
 CREATE POLICY "Users Read Votes" ON votes FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Users Cast Votes" ON votes FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Admins Reset Votes" ON votes FOR DELETE TO authenticated USING (is_admin());
 
--- ===========================
 -- POLÍTICAS: APP_SETTINGS
--- ===========================
-DROP POLICY IF EXISTS "Leitura Geral Settings" ON app_settings;
-DROP POLICY IF EXISTS "Admin Modifica Settings" ON app_settings;
 DROP POLICY IF EXISTS "Users Read Settings" ON app_settings;
 DROP POLICY IF EXISTS "Admins Manage Settings" ON app_settings;
-
 CREATE POLICY "Users Read Settings" ON app_settings FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admins Manage Settings" ON app_settings FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
--- 6. INICIALIZAÇÃO DE DADOS (Se necessário)
+-- 6. INICIALIZAÇÃO DE DADOS
 INSERT INTO app_settings (id, data) VALUES (1, '{}') ON CONFLICT (id) DO NOTHING;
