@@ -48,6 +48,8 @@ export interface MeetingData {
   agenda: string;
   deliberations: string;
   extraordinaryReason: string;
+  attendanceRows?: number; 
+  signatoriesCount?: number; // Novo controle de assinaturas
 }
 
 export interface ReportConfig {
@@ -71,7 +73,7 @@ export interface AppSettings {
   votingScreenSubtitle: string;
   timelineEvents: TimelineEvent[];
   currentUserRole: 'admin' | 'user';
-  reportConfig?: ReportConfig; // Configuração persistente dos relatórios
+  reportConfig?: ReportConfig; 
 }
 
 export interface DashboardStats {

@@ -88,9 +88,9 @@ const PortalCIPA: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-100 selection:text-blue-900">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 px-6 sm:px-12 py-4 no-print shadow-sm">
-        <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
+        <div className="flex items-center justify-between max-w-[1440px] mx-auto w-full">
           <div className="flex items-center gap-5">
-            <div className="w-11 h-11 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-900 shadow-sm overflow-hidden">
+            <div className="w-11 h-11 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-900 shadow-sm overflow-hidden text-[9px] font-black uppercase tracking-tight">
               {settings.logoBase64 ? (
                 <img src={settings.logoBase64} alt="Logo" className="w-full h-full object-contain p-1" />
               ) : (
@@ -145,7 +145,7 @@ const PortalCIPA: React.FC = () => {
       </header>
 
       <nav className="bg-white border-b border-slate-200 px-6 sm:px-12 no-print overflow-x-auto">
-        <div className="max-w-7xl mx-auto flex items-center gap-1 scrollbar-hide">
+        <div className="max-w-[1440px] mx-auto flex items-center gap-1 scrollbar-hide">
           {orderedTabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-6 py-5 text-xs font-black uppercase tracking-[0.1em] border-b-4 transition-all whitespace-nowrap ${activeTab === tab.id ? 'border-blue-700 text-blue-700 bg-blue-50/20' : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}>
               <IconRenderer name={settings.tabIcons[tab.id]} className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-blue-700' : 'text-slate-300'}`} />
@@ -155,7 +155,7 @@ const PortalCIPA: React.FC = () => {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-6 sm:p-12">
+      <main className="flex-1 max-w-[1440px] mx-auto w-full p-6 sm:p-12">
         <div className="max-w-full"><ActiveComponent /></div>
       </main>
 

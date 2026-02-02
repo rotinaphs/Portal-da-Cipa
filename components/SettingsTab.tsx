@@ -1,20 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store';
-import { Settings, Layout, Palette, Save, Image, Type, Menu, ArrowUp, ArrowDown, ChevronRight, Hash, Building2, Fingerprint, CheckCircle, Calendar } from 'lucide-react';
+import { Settings, Layout, Save, Image, Type, Menu, ArrowUp, ArrowDown, ChevronRight, Hash, Building2, Fingerprint, CheckCircle, Calendar } from 'lucide-react';
 
 const ICON_OPTIONS = ['LayoutDashboard', 'Users', 'FileEdit', 'Vote', 'ScrollText', 'BarChart', 'Settings', 'Upload', 'Shield', 'Fingerprint', 'Activity', 'ClipboardList', 'Calendar', 'Briefcase', 'Sparkles', 'CalendarClock'];
 
 const SettingsTab: React.FC = () => {
-  const { settings, updateSettings } = useAppStore();
+  const { settings, updateSettings, isSaving } = useAppStore();
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const handleUpdate = (field: string, value: any) => {
-    // Atualização local imediata para responsividade da UI (o store irá propagar)
+  // Estado local para campos de texto para evitar lag de digitação
+  const [localTexts, setLocalTexts] = useState({
+    companyName: settings.companyName,
+    portalTitle: settings.portalTitle,
+    portalSubtitle: settings.portalSubtitle,
+    votingScreenTitle: settings.votingScreenTitle
+  });
+
+  // Sincroniza estado local quando as configurações são carregadas ou mudam externamente
+  useEffect(() => {
+    if (!isSaving) {
+      setLocalTexts({
+        companyName: settings.companyName,
+        portalTitle: settings.portalTitle,
+        portalSubtitle: settings.portalSubtitle,
+        votingScreenTitle: settings.votingScreenTitle
+      });
+    }
+  }, [settings.companyName, settings.portalTitle, settings.portalSubtitle, settings.votingScreenTitle, isSaving]);
+
+  // Debounce para salvar automaticamente após parar de digitar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const hasChanged = 
+        localTexts.companyName !== settings.companyName ||
+        localTexts.portalTitle !== settings.portalTitle ||
+        localTexts.portalSubtitle !== settings.portalSubtitle ||
+        localTexts.votingScreenTitle !== settings.votingScreenTitle;
+        
+      if (hasChanged) {
+        updateSettings(localTexts);
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [localTexts, settings, updateSettings]);
+
+  const handleTextChange = (field: keyof typeof localTexts, value: string) => {
+    setLocalTexts(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleUpdateField = (field: string, value: any) => {
     updateSettings({ [field]: value });
   };
 
-  const handleManualSave = () => {
-    // Como updateSettings já persiste, isso é apenas feedback visual
+  const handleManualSave = async () => {
+    await updateSettings(localTexts);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2000);
   };
@@ -23,7 +62,7 @@ const SettingsTab: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => handleUpdate(field, reader.result);
+      reader.onloadend = () => handleUpdateField(field, reader.result);
       reader.readAsDataURL(file);
     }
   };
@@ -33,7 +72,7 @@ const SettingsTab: React.FC = () => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex >= 0 && targetIndex < newOrder.length) {
       [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
-      handleUpdate('menuOrder', newOrder);
+      handleUpdateField('menuOrder', newOrder);
     }
   };
 
@@ -53,15 +92,32 @@ const SettingsTab: React.FC = () => {
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-1 flex items-center gap-2"><Building2 className="w-3 h-3" /> Nome da Empresa</label>
-                <input type="text" className={inputClass} value={settings.companyName} onChange={(e) => handleUpdate('companyName', e.target.value)} />
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={localTexts.companyName} 
+                  onChange={(e) => handleTextChange('companyName', e.target.value)} 
+                />
               </div>
-              <div className="space-y-2"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-1 flex items-center gap-2"><Type className="w-3 h-3" /> Título Principal</label><input type="text" className={inputClass} value={settings.portalTitle} onChange={(e) => handleUpdate('portalTitle', e.target.value)} /></div>
-              <div className="space-y-2"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-1 flex items-center gap-2"><Hash className="w-3 h-3" /> Subtítulo</label><input type="text" className={inputClass} value={settings.portalSubtitle} onChange={(e) => handleUpdate('portalSubtitle', e.target.value)} /></div>
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-1 flex items-center gap-2"><Type className="w-3 h-3" /> Título Principal</label>
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={localTexts.portalTitle} 
+                  onChange={(e) => handleTextChange('portalTitle', e.target.value)} 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-1 flex items-center gap-2"><Hash className="w-3 h-3" /> Subtítulo</label>
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={localTexts.portalSubtitle} 
+                  onChange={(e) => handleTextChange('portalSubtitle', e.target.value)} 
+                />
+              </div>
             </div>
-          </section>
-          <section className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3"><Palette className="w-5 h-5 text-indigo-600" /> Paleta do Sistema</h2>
-            <div className="flex flex-wrap gap-4">{['#1e40af', '#059669', '#d97706', '#dc2626', '#7c3aed', '#000000', '#2563eb', '#db2777'].map(color => <button key={color} onClick={() => handleUpdate('themeColor', color)} className={`w-12 h-12 rounded-2xl border-4 transition-all transform hover:scale-110 shadow-sm ${settings.themeColor === color ? 'border-slate-900 shadow-xl' : 'border-transparent'}`} style={{ backgroundColor: color }} />)}</div>
           </section>
         </div>
         <div className="lg:col-span-6 space-y-10">
@@ -79,7 +135,15 @@ const SettingsTab: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              <div className="space-y-2"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-1">Título da Urna</label><input type="text" className={inputClass} value={settings.votingScreenTitle} onChange={(e) => handleUpdate('votingScreenTitle', e.target.value)} /></div>
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-1">Título da Urna</label>
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={localTexts.votingScreenTitle} 
+                  onChange={(e) => handleTextChange('votingScreenTitle', e.target.value)} 
+                />
+              </div>
             </div>
           </section>
           <section className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
@@ -93,7 +157,7 @@ const SettingsTab: React.FC = () => {
                   </div>
                   <div className="flex-1"><span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.1em]">{tabId}</span></div>
                   <div className="relative">
-                    <select className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[9px] font-black uppercase text-slate-500 outline-none pr-8" value={settings.tabIcons[tabId]} onChange={(e) => handleUpdate('tabIcons', { ...settings.tabIcons, [tabId]: e.target.value })}>{ICON_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>
+                    <select className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[9px] font-black uppercase text-slate-500 outline-none pr-8" value={settings.tabIcons[tabId]} onChange={(e) => handleUpdateField('tabIcons', { ...settings.tabIcons, [tabId]: e.target.value })}>{ICON_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>
                     <ChevronRight className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 rotate-90 text-slate-300 pointer-events-none" />
                   </div>
                 </div>
